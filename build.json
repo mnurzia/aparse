@@ -1,0 +1,30 @@
+{
+    "desc": "Argument parser",
+    "requires": [
+        "bits/util/exports",
+        "bits/util/unused",
+        "bits/hooks/malloc",
+        "bits/types/size",
+        "bits/util/null",
+        "bits/hooks/assert",
+        "bits/math/implies",
+        "bits/util/ntstr/len"
+    ],
+    "files": {
+        "api": [
+            "aparse_api.h"
+        ],
+        "internal": [
+            "aparse_internal.h"
+        ],
+        "impl": [
+            "aparse_error.c",
+            "aparse_opt_bool.c",
+            "aparse_opt_int.c",
+            "aparse_opt.c",
+            "aparse_parse.c",
+            "aparse_state.c"
+        ]
+    },
+    "version": "0.1.0"
+}

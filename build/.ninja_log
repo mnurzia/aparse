@@ -1,0 +1,10 @@
+# ninja log v5
+0	32	1650123322340806057	CMakeFiles/aparse.dir/aparse_state.c.o	1304a82a1c05f138
+0	31	1650123322340728474	CMakeFiles/aparse.dir/aparse_opt.c.o	e2e482a75b5c3199
+0	32	1650123322340677016	CMakeFiles/aparse.dir/aparse_opt_bool.c.o	dda64685999db1d
+0	32	1650123322341074263	CMakeFiles/aparse.dir/aparse_opt_int.c.o	e85417872f1c120e
+0	34	1650123322344191072	CMakeFiles/aparse.dir/aparse_parse.c.o	1ee18d3c509c6087
+0	33	1650123322343397245	CMakeFiles/aparse.dir/aparse_error.c.o	5e2daeaa2c05bb54
+0	29	1650123322338673281	CMakeFiles/aparse.dir/_cpack/impl.c.o	c670d53f59aca7cb
+0	33	1653697639209067787	build.ninja	661d1690ccc7cfac
+1	58	1653697639902388752	CMakeFiles/aparse_tests.dir/_cpack/impl.c.o	2c61e5c6c0475b11

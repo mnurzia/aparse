@@ -1,0 +1,4 @@
+/Users/maxnu/Code/libs/src/lilbits/aparse/build/CMakeFiles/aparse_tests.dir
+/Users/maxnu/Code/libs/src/lilbits/aparse/build/CMakeFiles/aparse_fuzz.dir
+/Users/maxnu/Code/libs/src/lilbits/aparse/build/CMakeFiles/edit_cache.dir
+/Users/maxnu/Code/libs/src/lilbits/aparse/build/CMakeFiles/rebuild_cache.dir

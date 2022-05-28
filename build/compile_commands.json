@@ -1,0 +1,72 @@
+[
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_tests.dir/aparse_error.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_error.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_error.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_tests.dir/aparse_opt_bool.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt_bool.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt_bool.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_tests.dir/aparse_opt_int.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt_int.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt_int.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_tests.dir/aparse_opt.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_tests.dir/aparse_parse.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_parse.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_parse.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_tests.dir/aparse_state.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_state.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_state.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_tests.dir/_cpack/impl.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/_cpack/impl.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/_cpack/impl.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_fuzz.dir/aparse_error.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_error.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_error.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_fuzz.dir/aparse_opt_bool.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt_bool.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt_bool.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_fuzz.dir/aparse_opt_int.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt_int.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt_int.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_fuzz.dir/aparse_opt.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_opt.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_fuzz.dir/aparse_parse.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_parse.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_parse.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_fuzz.dir/aparse_state.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/aparse_state.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/aparse_state.c"
+},
+{
+  "directory": "/Users/maxnu/Code/libs/src/lilbits/aparse/build",
+  "command": "/usr/bin/clang -DMN_DEBUG -DMN__SPLIT_BUILD -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Werror -Wextra -Wshadow -Wconversion -Wstrict-prototypes -Wuninitialized -Wpedantic --std=c89 -g -O0 -o CMakeFiles/aparse_fuzz.dir/_cpack/impl.c.o -c /Users/maxnu/Code/libs/src/lilbits/aparse/_cpack/impl.c",
+  "file": "/Users/maxnu/Code/libs/src/lilbits/aparse/_cpack/impl.c"
+}
+]
