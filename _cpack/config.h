@@ -1,6 +1,8 @@
 #if !defined(MN__APARSE_CONFIG_H)
 #define MN__APARSE_CONFIG_H
 
+#include "../tests/test_config.h"
+/* bits/hooks/assert */
 /* desc */
 /* cppreference */
 #if !defined(MN_ASSERT)
@@ -10,11 +12,7 @@
 
 /* bits/hooks/malloc */
 /* Set to 1 in order to define malloc(), free(), and realloc() replacements. */
-#if defined(MN_USE_CUSTOM_ALLOCATOR)
-#define MN_MALLOC my_malloc
-#define MN_REALLOC my_realloc
-#define MN_FREE my_free
-#else
+#if !defined(MN_USE_CUSTOM_ALLOCATOR)
 #include <stdlib.h>
 #define MN_MALLOC malloc
 #define MN_REALLOC realloc

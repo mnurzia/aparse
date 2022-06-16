@@ -1,6 +1,7 @@
 #if !defined(MN__APARSE_INTERNAL_H)
 #define MN__APARSE_INTERNAL_H
 
+#include "../tests/test_config.h"
 #include "api.h"
 
 /* bits/math/implies */
@@ -23,7 +24,7 @@
 #define MN__STATIC_ASSERT(name, expr) char MN__PASTE(mn__, name)[(expr)==1]
 
 /* bits/util/ntstr/len */
-MN_INTERNAL mn_size mn__slen(mn_char* s);
+MN_INTERNAL mn_size mn__slen(const mn_char* s);
 
 /* bits/util/unused */
 #define MN__UNUSED(x) ((void)(x))
