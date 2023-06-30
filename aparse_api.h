@@ -23,8 +23,7 @@
  * | <0_OR_1_EQ> | *   | *    | *   |     |      |     | *     |       |
  * | <0_OR_MORE> | *   | *    | *   | *   | *    | *   | *     | *     |
  * | <1_OR_MORE> |     | *    |     | *   | *    |     | *     | *     | */
-typedef enum aparse_nargs
-{
+typedef enum aparse_nargs {
     /* Parse either zero or 1 subarguments. */
     APARSE_NARGS_0_OR_1 = -1, /* Like regex '?' */
     /* Parse either zero or 1 subarguments, but only allow using '='. */
@@ -42,14 +41,19 @@ typedef struct aparse_state {
     aparse__state* state;
 } aparse_state;
 
-typedef aparse_error (*aparse_out_cb)(void* user, const char* buf, mn_size buf_size);
-typedef aparse_error (*aparse_custom_cb)(void* user, aparse_state* state, int sub_arg_idx, const char* text, mn_size text_size);
+typedef aparse_error (*aparse_out_cb)(
+  void* user, const char* buf, mn_size buf_size);
+typedef aparse_error (*aparse_custom_cb)(
+  void* user, aparse_state* state, int sub_arg_idx, const char* text,
+  mn_size text_size);
 
 MN_API aparse_error aparse_init(aparse_state* state);
-MN_API void aparse_set_out_cb(aparse_state* state, aparse_out_cb out_cb, void* user);
+MN_API void
+aparse_set_out_cb(aparse_state* state, aparse_out_cb out_cb, void* user);
 MN_API void aparse_destroy(aparse_state* state);
 
-MN_API aparse_error aparse_add_opt(aparse_state* state, char short_opt, const char* long_opt);
+MN_API aparse_error
+aparse_add_opt(aparse_state* state, char short_opt, const char* long_opt);
 MN_API aparse_error aparse_add_pos(aparse_state* state, const char* name);
 MN_API aparse_error aparse_add_sub(aparse_state* state);
 
@@ -57,14 +61,23 @@ MN_API void aparse_arg_help(aparse_state* state, const char* help_text);
 MN_API void aparse_arg_metavar(aparse_state* state, const char* metavar);
 
 MN_API void aparse_arg_type_bool(aparse_state* state, int* out);
-MN_API void aparse_arg_type_str(aparse_state* state, const char** out, mn_size* out_size);
+MN_API void
+aparse_arg_type_store_int(aparse_state* state, int value, int* out);
+MN_API void
+aparse_arg_type_str(aparse_state* state, const char** out, mn_size* out_size);
+MN_API void aparse_arg_type_int(aparse_state* state, int* out);
 MN_API void aparse_arg_type_help(aparse_state* state);
 MN_API void aparse_arg_type_version(aparse_state* state);
-MN_API void aparse_arg_type_custom(aparse_state* state, aparse_custom_cb cb, void* user, aparse_nargs nargs);
+MN_API void aparse_arg_type_custom(
+  aparse_state* state, aparse_custom_cb cb, void* user, aparse_nargs nargs);
 
-/* MN_API void aparse_arg_int_multi(aparse_state* state, int** out, mn_size* out_size) */
-/* MN_API void aparse_arg_str_multi(aparse_state* state, const char** out, mn_size** size_out, mn_size* num) */
+/* MN_API void aparse_arg_int_multi(aparse_state* state, int** out, mn_size*
+ * out_size) */
+/* MN_API void aparse_arg_str_multi(aparse_state* state, const char** out,
+ * mn_size** size_out, mn_size* num) */
 
-MN_API int aparse_sub_add_cmd(aparse_state* state, const char* name, aparse_state** subcmd);
+MN_API int aparse_sub_add_cmd(
+  aparse_state* state, const char* name, aparse_state** subcmd);
 
-MN_API aparse_error aparse_parse(aparse_state* state, int argc, const char* const* argv);
+MN_API aparse_error
+aparse_parse(aparse_state* state, int argc, const char* const* argv);

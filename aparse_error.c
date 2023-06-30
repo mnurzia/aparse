@@ -2,7 +2,8 @@
 
 MN_INTERNAL aparse_error aparse__error_begin_progname(aparse__state* state) {
     aparse_error err = APARSE_ERROR_NONE;
-    if ((err = aparse__state_out_n(state, state->root->prog_name, state->root->prog_name_size))) {
+    if ((err = aparse__state_out_n(
+           state, state->root->prog_name, state->root->prog_name_size))) {
         return err;
     }
     if ((err = aparse__state_out_s(state, ": "))) {
@@ -22,7 +23,8 @@ MN_INTERNAL aparse_error aparse__error_begin(aparse__state* state) {
     return err;
 }
 
-MN_INTERNAL aparse_error aparse__error_print_short_opt(aparse__state* state, const aparse__arg* arg) {
+MN_INTERNAL aparse_error
+aparse__error_print_short_opt(aparse__state* state, const aparse__arg* arg) {
     aparse_error err = APARSE_ERROR_NONE;
     MN_ASSERT(arg->contents.opt.short_opt);
     if ((err = aparse__state_out(state, '-'))) {
@@ -34,19 +36,23 @@ MN_INTERNAL aparse_error aparse__error_print_short_opt(aparse__state* state, con
     return err;
 }
 
-MN_INTERNAL aparse_error aparse__error_print_long_opt(aparse__state* state, const aparse__arg* arg) {
+MN_INTERNAL aparse_error
+aparse__error_print_long_opt(aparse__state* state, const aparse__arg* arg) {
     aparse_error err = APARSE_ERROR_NONE;
     MN_ASSERT(arg->contents.opt.long_opt);
     if ((err = aparse__state_out_s(state, "--"))) {
         return err;
     }
-    if ((err = aparse__state_out_n(state, arg->contents.opt.long_opt, arg->contents.opt.long_opt_size))) {
+    if ((err = aparse__state_out_n(
+           state, arg->contents.opt.long_opt,
+           arg->contents.opt.long_opt_size))) {
         return err;
     }
     return err;
 }
 
-MN_INTERNAL aparse_error aparse__error_begin_opt(aparse__state* state, const aparse__arg* arg) {
+MN_INTERNAL aparse_error
+aparse__error_begin_opt(aparse__state* state, const aparse__arg* arg) {
     aparse_error err = APARSE_ERROR_NONE;
     MN_ASSERT(arg->type == APARSE__ARG_TYPE_OPTIONAL);
     if ((err = aparse__error_begin(state))) {
@@ -76,7 +82,8 @@ MN_INTERNAL aparse_error aparse__error_begin_opt(aparse__state* state, const apa
     return err;
 }
 
-MN_INTERNAL aparse_error aparse__error_begin_pos(aparse__state* state, const aparse__arg* arg) {
+MN_INTERNAL aparse_error
+aparse__error_begin_pos(aparse__state* state, const aparse__arg* arg) {
     aparse_error err = APARSE_ERROR_NONE;
     MN_ASSERT(arg->type == APARSE__ARG_TYPE_POSITIONAL);
     if ((err = aparse__error_begin(state))) {
@@ -85,7 +92,8 @@ MN_INTERNAL aparse_error aparse__error_begin_pos(aparse__state* state, const apa
     if ((err = aparse__state_out_s(state, "argument "))) {
         return err;
     }
-    if ((err = aparse__state_out_n(state, arg->contents.pos.name, arg->contents.pos.name_size))) {
+    if ((err = aparse__state_out_n(
+           state, arg->contents.pos.name, arg->contents.pos.name_size))) {
         return err;
     }
     if ((err = aparse__state_out_s(state, ": "))) {
@@ -94,7 +102,8 @@ MN_INTERNAL aparse_error aparse__error_begin_pos(aparse__state* state, const apa
     return err;
 }
 
-MN_INTERNAL aparse_error aparse__error_begin_arg(aparse__state* state, const aparse__arg* arg) {
+MN_INTERNAL aparse_error
+aparse__error_begin_arg(aparse__state* state, const aparse__arg* arg) {
     if (arg->type == APARSE__ARG_TYPE_OPTIONAL) {
         return aparse__error_begin_opt(state, arg);
     } else {
@@ -102,21 +111,15 @@ MN_INTERNAL aparse_error aparse__error_begin_arg(aparse__state* state, const apa
     }
 }
 
-MN_INTERNAL aparse_error aparse__error_unrecognized_arg(aparse__state* state, const char* arg) {
-    aparse_error err = APARSE_ERROR_NONE;
-    if ((err = aparse__error_begin(state))) {
-        return err;
+MN_INTERNAL int
+aparse__error_should_quote(const char* text, mn_size text_size) {
+    mn_size i;
+    for (i = 0; i < text_size; i++) {
+        if (text[i] < ' ') {
+            return 1;
+        }
     }
-    if ((err = aparse__state_out_s(state, "unrecognized argument: "))) {
-        return err;
-    }
-    if ((err = aparse__state_out_s(state, arg))) {
-        return err;
-    }
-    if ((err = aparse__state_out(state, '\n'))) {
-        return err;
-    }
-    return err;
+    return 0;
 }
 
 MN_INTERNAL char aparse__hexdig(unsigned char c) {
@@ -127,7 +130,32 @@ MN_INTERNAL char aparse__hexdig(unsigned char c) {
     }
 }
 
-MN_INTERNAL aparse_error aparse__error_quote(aparse__state* state, const char* text, mn_size text_size) {
+MN_INTERNAL aparse_error
+aparse__error_quote_one(aparse__state* state, char c) {
+    aparse_error err = APARSE_ERROR_NONE;
+    if (c < ' ') {
+        if ((err = aparse__state_out(state, '\\'))) {
+            return err;
+        }
+        if ((err = aparse__state_out(state, 'x'))) {
+            return err;
+        }
+        if ((err = aparse__state_out(state, aparse__hexdig((c >> 4) & 0xF)))) {
+            return err;
+        }
+        if ((err = aparse__state_out(state, aparse__hexdig(c & 0xF)))) {
+            return err;
+        }
+    } else {
+        if ((err = aparse__state_out(state, c))) {
+            return err;
+        }
+    }
+    return err;
+}
+
+MN_INTERNAL aparse_error aparse__error_quote(
+  aparse__state* state, const char* text, mn_size text_size) {
     aparse_error err = APARSE_ERROR_NONE;
     mn_size i;
     if ((err = aparse__state_out(state, '"'))) {
@@ -135,26 +163,68 @@ MN_INTERNAL aparse_error aparse__error_quote(aparse__state* state, const char* t
     }
     for (i = 0; i < text_size; i++) {
         char c = text[i];
-        if (c < ' ') {
-            if ((err = aparse__state_out(state, '\\'))) {
-                return err;
-            }
-            if ((err = aparse__state_out(state, 'x'))) {
-                return err;
-            }
-            if ((err = aparse__state_out(state, aparse__hexdig((c >> 4) & 0xF)))) {
-                return err;
-            }
-            if ((err = aparse__state_out(state, aparse__hexdig(c & 0xF)))) {
-                return err;
-            }
-        } else {
-            if ((err = aparse__state_out(state, c))) {
-                return err;
-            }
+        if ((err = aparse__error_quote_one(state, c))) {
+            return err;
         }
     }
     if ((err = aparse__state_out(state, '"'))) {
+        return err;
+    }
+    return err;
+}
+
+MN_INTERNAL aparse_error
+aparse__error_unrecognized_arg(aparse__state* state, const char* arg) {
+    aparse_error err = APARSE_ERROR_NONE;
+    if ((err = aparse__error_begin(state))) {
+        return err;
+    }
+    if ((err = aparse__state_out_s(state, "unrecognized argument: "))) {
+        return err;
+    }
+    if (aparse__error_should_quote(arg, mn__slen(arg))) {
+        if ((err = aparse__error_quote(state, arg, mn__slen(arg)))) {
+            return err;
+        }
+    } else {
+        if ((err = aparse__state_out_s(state, arg))) {
+            return err;
+        }
+    }
+    if ((err = aparse__state_out(state, '\n'))) {
+        return err;
+    }
+    return err;
+}
+
+MN_INTERNAL aparse_error
+aparse__error_unrecognized_short_arg(aparse__state* state, char short_opt) {
+    aparse_error err = APARSE_ERROR_NONE;
+    if ((err = aparse__error_begin(state))) {
+        return err;
+    }
+    if ((err = aparse__state_out_s(state, "unrecognized argument: "))) {
+        return err;
+    }
+    if (aparse__error_should_quote(&short_opt, 1) || short_opt == ' ') {
+        if ((err = aparse__state_out_n(state, "\"-", 2))) {
+            return err;
+        }
+        if ((err = aparse__error_quote_one(state, short_opt))) {
+            return err;
+        }
+        if ((err = aparse__state_out_n(state, "\"", 1))) {
+            return err;
+        }
+    } else {
+        if ((err = aparse__state_out_n(state, "-", 1))) {
+            return err;
+        }
+        if ((err = aparse__state_out_n(state, &short_opt, 1))) {
+            return err;
+        }
+    }
+    if ((err = aparse__state_out(state, '\n'))) {
         return err;
     }
     return err;
@@ -176,7 +246,8 @@ int aparse__error_can_coalesce_in_usage(const aparse__arg* arg) {
     return 1;
 }
 
-MN_INTERNAL aparse_error aparse__error_print_sub_args(aparse__state* state, const aparse__arg* arg) {
+MN_INTERNAL aparse_error
+aparse__error_print_sub_args(aparse__state* state, const aparse__arg* arg) {
     aparse_error err = APARSE_ERROR_NONE;
     const char* var;
     mn_size var_size;
@@ -254,7 +325,8 @@ MN_INTERNAL aparse_error aparse__error_usage(aparse__state* state) {
     if ((err = aparse__state_out_s(state, "usage: "))) {
         return err;
     }
-    if ((err = aparse__state_out_n(state, state->root->prog_name, state->root->prog_name_size))) {
+    if ((err = aparse__state_out_n(
+           state, state->root->prog_name, state->root->prog_name_size))) {
         return err;
     }
     /* print coalesced args */
@@ -266,7 +338,8 @@ MN_INTERNAL aparse_error aparse__error_usage(aparse__state* state) {
                 }
                 has_printed = 1;
             }
-            if ((err = aparse__state_out(state, cur->contents.opt.short_opt))) {
+            if ((err =
+                   aparse__state_out(state, cur->contents.opt.short_opt))) {
                 return err;
             }
         }
@@ -299,8 +372,7 @@ MN_INTERNAL aparse_error aparse__error_usage(aparse__state* state) {
                         return err;
                     }
                 }
-                if (cur->nargs != APARSE_NARGS_0_OR_1_EQ &&
-                    cur->nargs != 0) {
+                if (cur->nargs != APARSE_NARGS_0_OR_1_EQ && cur->nargs != 0) {
                     if ((err = aparse__state_out(state, ' '))) {
                         return err;
                     }
