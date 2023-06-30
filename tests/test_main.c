@@ -146,37 +146,44 @@ TEST(t_aparse_parse_opt_multiple_bools) {
     }
     aparse_arg_type_bool(&ap, &b);
 
-    a = 0; b = 0;
+    a = 0;
+    b = 0;
     ASSERT(!parse_one(&ap, "-a"));
     ASSERT_EQ(a, 1);
     ASSERT_EQ(b, 0);
 
-    a = 0; b = 0;
+    a = 0;
+    b = 0;
     ASSERT(!parse_one(&ap, "-b"));
     ASSERT_EQ(a, 0);
     ASSERT_EQ(b, 1);
 
-    a = 0; b = 0;
+    a = 0;
+    b = 0;
     ASSERT(!parse_one(&ap, "-ab"));
     ASSERT_EQ(a, 1);
     ASSERT_EQ(b, 1);
 
-    a = 0; b = 0;
+    a = 0;
+    b = 0;
     ASSERT(!parse_one(&ap, "-ba"));
     ASSERT_EQ(a, 1);
     ASSERT_EQ(b, 1);
 
-    a = 0; b = 0;
+    a = 0;
+    b = 0;
     ASSERT(!parse_two(&ap, "-a", "-b"));
     ASSERT_EQ(a, 1);
     ASSERT_EQ(b, 1);
 
-    a = 0; b = 0;
+    a = 0;
+    b = 0;
     ASSERT(!parse_two(&ap, "--arg", "--bar"));
     ASSERT_EQ(a, 1);
     ASSERT_EQ(b, 1);
 
-    a = 1; b = 1;
+    a = 1;
+    b = 1;
     ASSERT(!parse_two(&ap, "--arg=0", "--bar=0"));
     ASSERT_EQ(a, 0);
     ASSERT_EQ(b, 0);
@@ -196,7 +203,7 @@ TEST(t_aparse_parse_pos_bool) {
         goto error;
     }
     aparse_arg_type_bool(&ap, &out);
-    
+
     out = 0;
     ASSERT(!parse_one(&ap, "1"));
     ASSERT_EQ(out, 1);
@@ -242,6 +249,36 @@ error:
     PASS();
 }
 
+TEST(t_aparse_parse_poss) {
+    aparse_error err = APARSE_ERROR_NONE;
+    aparse_state ap;
+    int out = 0;
+    if ((err = aparse_init(&ap))) {
+        goto error;
+    }
+    if ((err = aparse_add_pos(&ap, "i1"))) {
+        goto error;
+    }
+    aparse_arg_type_bool(&ap, &out);
+    if ((err = aparse_add_pos(&ap, "i2"))) {
+        goto error;
+    }
+    aparse_arg_type_bool(&ap, &out);
+
+    out = 0;
+    ASSERT(!parse_two(&ap, "1", "1"));
+    ASSERT_EQ(out, 1);
+
+    out = 1;
+    ASSERT(!parse_two(&ap, "0", "0"));
+    ASSERT_EQ(out, 0);
+
+    ASSERT_EQ(parse_one(&ap, ""), APARSE_ERROR_PARSE);
+error:
+    aparse_destroy(&ap);
+    PASS();
+}
+
 int main() {
     MPTEST_MAIN_BEGIN();
     MPTEST_ENABLE_LEAK_CHECKING();
@@ -254,6 +291,7 @@ int main() {
     RUN_TEST(t_aparse_parse_opt_multiple_bools);
     RUN_TEST(t_aparse_parse_pos_bool);
     RUN_TEST(t_aparse_help);
+    RUN_TEST(t_aparse_parse_poss);
     MPTEST_DISABLE_LEAK_CHECKING();
     MPTEST_MAIN_END();
     return 0;
