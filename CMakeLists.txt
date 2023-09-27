@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.26)
+enable_testing()
+
+project(aparse)
+include(CTest)
+
+file(GLOB test_files "${CMAKE_SOURCE_DIR}/test/*.c")
+foreach (file ${test_files})
+  message("${file}")
+  get_filename_component(file_noext ${file} NAME_WE)
+  set(test_name test_${file_noext})
+  add_executable(${test_name} ${file} aparse.c)
+  target_compile_options(${test_name} PUBLIC -g --std=c89 -Wall -Werror -Wextra -pedantic)
+  target_include_directories(${test_name} SYSTEM PUBLIC .)
+  add_test(NAME ${test_name} COMMAND ${test_name})
+endforeach()
