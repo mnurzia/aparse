@@ -48,33 +48,40 @@ struct ap {
   ap_parent *parents;    /* parent list for argument search order */
 };
 
-void *ap_malloc(void *uptr, size_t n) {
+void *ap_cb_malloc(void *uptr, size_t n) {
   (void)(uptr);
   return malloc(n);
 }
 
-void ap_free(void *uptr, void *ptr) {
+void ap_cb_free(void *uptr, void *ptr) {
   (void)(uptr);
   free(ptr);
 }
 
-void *ap_realloc(void *uptr, void *ptr, size_t n) {
+void *ap_cb_realloc(void *uptr, void *ptr, size_t n) {
   (void)uptr;
   return realloc(ptr, n);
 }
 
-int ap_out(void *uptr, const char *text, size_t n) {
+int ap_cb_out(void *uptr, const char *text, size_t n) {
   (void)uptr;
   return fwrite(text, 1, n, stdout) < n ? AP_ERR_IO : AP_ERR_NONE;
 }
 
-int ap_err(void *uptr, const char *text, size_t n) {
+int ap_cb_err(void *uptr, const char *text, size_t n) {
   (void)uptr;
   return fwrite(text, 1, n, stderr) < n ? AP_ERR_IO : AP_ERR_NONE;
 }
 
-static const ap_ctxcb ap_default_ctxcb = {NULL,    ap_malloc, ap_realloc,
-                                          ap_free, ap_out,    ap_err};
+static const ap_ctxcb ap_default_ctxcb = {
+    NULL, ap_cb_malloc, ap_cb_realloc, ap_cb_free, ap_cb_out, ap_cb_err};
+
+char *ap_dupe(ap *par, const char *str) {
+  char *out = par->ctxcb->malloc(par->ctxcb->uptr, strlen(str) + 1);
+  if (!out)
+    return out;
+  return strcpy(out, str);
+}
 
 ap *ap_init(const char *progname) {
   ap *out;
@@ -88,7 +95,7 @@ int ap_init_full(ap **out, const char *progname, const ap_ctxcb *pctxcb) {
   if (!par)
     return AP_ERR_NOMEM;
   par->ctxcb = pctxcb;
-  par->progname = progname;
+  par->progname = ap_dupe(par, progname);
   par->args = NULL;
   par->args_tail = NULL;
   par->current = NULL;
