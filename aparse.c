@@ -9,6 +9,7 @@
 #define AP_ARG_FLAG_REQUIRED 2
 #define AP_ARG_FLAG_SUB 4
 #define AP_ARG_FLAG_COALESCE 8
+#define AP_ARG_FLAG_DESTRUCTOR 16
 
 typedef struct ap_arg ap_arg;
 
@@ -114,6 +115,11 @@ void ap_destroy(ap *par) {
         sub = sub->next;
         ap_cb_free(par, prev_sub);
       }
+    } else if (prev->flags & AP_ARG_FLAG_DESTRUCTOR) {
+      ap_cb_data data = {0};
+      data.destroy = 1;
+      data.parser = par;
+      prev->cb(prev->user, &data);
     }
     par->args = par->args->next;
     ap_cb_free(par, prev);
@@ -171,6 +177,11 @@ void ap_help(ap *par, const char *help) {
   par->current->help = help;
 }
 
+void ap_metavar(ap *par, const char *metavar) {
+  ap_check_arg(par);
+  par->current->metavar = metavar;
+}
+
 void ap_type_sub(ap *par, const char *metavar, int *out_idx) {
   ap_check_arg(par);
   /* if this fails, you called ap_type_sub() twice */
@@ -214,6 +225,13 @@ void ap_type_custom(ap *par, ap_cb callback, void *user) {
   par->current->user = user;
 }
 
+void ap_custom_dtor(ap *par, int enable) {
+  int flag = enable * AP_ARG_FLAG_DESTRUCTOR;
+  ap_check_arg(par);
+  assert(enable == 0 || enable == 1);
+  par->current->flags = (par->current->flags & ~AP_ARG_FLAG_DESTRUCTOR) | flag;
+}
+
 int ap_flag_cb(void *uptr, ap_cb_data *pdata) {
   int *out = (int *)uptr;
   (void)(pdata);
@@ -232,6 +250,86 @@ int ap_int_cb(void *uptr, ap_cb_data *pdata) {
 
 void ap_type_int(ap *par, int *out) {
   ap_type_custom(par, ap_int_cb, (void *)out);
+}
+
+int ap_str_cb(void *uptr, ap_cb_data *pdata) {
+  const char **out = (const char **)uptr;
+  if (!pdata->arg)
+    return AP_ERR_PARSE;
+  *out = pdata->arg;
+  return pdata->arg_len;
+}
+
+void ap_type_str(ap *par, const char **out) {
+  ap_type_custom(par, ap_str_cb, (void *)out);
+}
+
+typedef struct ap_enum {
+  const char **choices;
+  int *out;
+  char *metavar;
+} ap_enum;
+
+int ap_enum_cb(void *uptr, ap_cb_data *pdata) {
+  ap_enum *e = (ap_enum *)uptr;
+  const char **cur;
+  int i;
+  if (pdata->destroy) {
+    ap_cb_free(pdata->parser, e->metavar);
+    ap_cb_free(pdata->parser, e);
+    return AP_ERR_NONE;
+  }
+  for (cur = e->choices, i = 0; *cur; cur++, i++) {
+    if (!strcmp(*cur, pdata->arg)) {
+      *e->out = i;
+      return pdata->arg_len;
+    }
+  }
+  return AP_ERR_PARSE;
+}
+
+int ap_type_enum(ap *par, int *out, const char **choices) {
+  ap_enum *e;
+  /* don't pass NULL in */
+  assert(choices);
+  /* you must pass at least one choice */
+  assert(choices[0]);
+  e = ap_cb_malloc(par, sizeof(ap_enum));
+  if (!e)
+    return AP_ERR_NOMEM;
+  memset(e, 0, sizeof(*e));
+  e->choices = choices;
+  e->out = out;
+  {
+    /* build metavar */
+    size_t mvs = 2;
+    const char **cur;
+    char *metavar_ptr;
+    for (cur = choices; *cur; cur++) {
+      /* make space for comma + length of string */
+      mvs += (mvs != 2) + strlen(*cur);
+    }
+    e->metavar = malloc(sizeof(char) * mvs + 1);
+    if (!e->metavar) {
+      ap_cb_free(par, e);
+      return AP_ERR_NOMEM;
+    }
+    metavar_ptr = e->metavar;
+    *(metavar_ptr++) = '{';
+    for (cur = choices; *cur; cur++) {
+      size_t l = strlen(*cur);
+      if (metavar_ptr != e->metavar + 1)
+        *(metavar_ptr++) = ',';
+      memcpy(metavar_ptr, *cur, l);
+      metavar_ptr += l;
+    }
+    *(metavar_ptr++) = '}';
+    *(metavar_ptr++) = '\0';
+  }
+  ap_type_custom(par, ap_enum_cb, (void *)e);
+  ap_metavar(par, e->metavar);
+  ap_custom_dtor(par, 1);
+  return AP_ERR_NONE;
 }
 
 typedef struct ap_parser {

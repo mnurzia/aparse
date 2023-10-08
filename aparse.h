@@ -1,5 +1,5 @@
-#ifndef MN_AP_H
-#define MN_AP_H
+#ifndef APARSE_H
+#define APARSE_H
 
 #include <stddef.h>
 
@@ -7,13 +7,6 @@
 #define AP_ERR_NOMEM -1
 #define AP_ERR_PARSE -2
 #define AP_ERR_IO -3
-
-/* How much validation should the library do? */
-
-/* Want:
- * - Pos/opt
- * - Aliases
- * - Subparsers */
 
 typedef struct ap ap;
 
@@ -32,6 +25,7 @@ typedef struct ap_cb_data {
   int idx;
   int more;
   int destroy;
+  ap *parser;
 } ap_cb_data;
 
 typedef int (*ap_cb)(void *uptr, ap_cb_data *pdata);
@@ -48,15 +42,17 @@ int ap_opt(ap *par, char short_opt, const char *long_opt);
 void ap_type_flag(ap *par, int *out);
 void ap_type_int(ap *par, int *out);
 void ap_type_str(ap *par, const char **out);
-void ap_type_str_n(ap *par, const char **out, size_t *out_sz);
-void ap_type_enum(ap *par, int *out, const char **choices);
+
+int ap_type_enum(ap *par, int *out, const char **choices);
 
 void ap_help(ap *par, const char *help);
+void ap_metavar(ap *par, const char *metavar);
 
 void ap_type_sub(ap *par, const char *metavar, int *out_idx);
 int ap_sub_add(ap *par, const char *name, ap **subpar);
 
 void ap_type_custom(ap *par, ap_cb callback, void *user);
+void ap_custom_dtor(ap *par, int enable);
 
 int ap_parse(ap *par, int argc, const char *const *argv);
 

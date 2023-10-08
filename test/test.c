@@ -249,6 +249,32 @@ done:
   PASS();
 }
 
+TEST(type_enum) {
+  ap_ctxcb cb = {0};
+  struct bufs b = {0};
+  ap *parser = make_out_hooks(&cb, &b);
+  int flag;
+  const char *enum_choices[] = {"a", "bcd", NULL};
+  int argc = 2;
+  const char *const argv[] = {"-e", "bcd"};
+  if (!parser)
+    goto done;
+  if (ap_opt(parser, 'e', "enum"))
+    goto done;
+  if (ap_type_enum(parser, &flag, enum_choices))
+    goto done;
+  ap_help(parser, "option");
+  ASSERT(!ap_show_help(parser));
+  ASSERT(!strcmp(
+      b.out, "usage: abc [-e {a,bcd}]\n\noptional arguments:\n  -e {a,bcd}, "
+             "--enum {a,bcd}\n    option\n"));
+  ASSERT(!ap_parse(parser, argc, argv));
+  ASSERT(flag == 1);
+done:
+  ap_destroy(parser);
+  PASS();
+}
+
 int main(int argc, const char *const *argv) {
   MPTEST_MAIN_BEGIN_ARGS(argc, argv);
   RUN_TEST(init);
@@ -263,5 +289,6 @@ int main(int argc, const char *const *argv) {
   RUN_TEST(usage_empty);
   RUN_TEST(help_empty);
   RUN_TEST(help_opts);
+  RUN_TEST(type_enum);
   MPTEST_MAIN_END();
 }
