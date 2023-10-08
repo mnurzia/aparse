@@ -3,5 +3,7 @@
     "files.associations": {
         "aparse_internal.h": "c"
     },
-    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "cmake.sourceDirectory": "${workspaceFolder}/test",
+    "cmake.buildDirectory": "${workspaceFolder}/test/build"
 }

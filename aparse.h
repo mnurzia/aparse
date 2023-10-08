@@ -1,7 +1,7 @@
 #ifndef APARSE_H
 #define APARSE_H
 
-#include <stddef.h>
+#include <stddef.h> /* size_t */
 
 #define AP_ERR_NONE 0   /* no error */
 #define AP_ERR_NOMEM -1 /* out of memory */
