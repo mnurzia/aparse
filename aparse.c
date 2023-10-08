@@ -282,6 +282,7 @@ int ap_flag_cb(void *uptr, ap_cb_data *pdata) {
 
 void ap_type_flag(ap *par, int *out) {
   ap_type_custom(par, ap_flag_cb, (void *)out);
+  par->current->flags |= AP_ARG_FLAG_COALESCE;
 }
 
 int ap_int_cb(void *uptr, ap_cb_data *pdata) {
