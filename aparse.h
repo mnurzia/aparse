@@ -34,7 +34,10 @@ typedef struct ap_cb_data {
 
 /* callback function for custom argument types
  * - uptr: user pointer
- * - pdata: pointer to callback data */
+ * - pdata: pointer to callback data
+ * return:
+ * - 0 or any positive value: "i consumed N chars of the argument"
+ * - AP_ERR_xxx: error occurred */
 typedef int (*ap_cb)(void *uptr, ap_cb_data *pdata);
 
 /* initialize parser
