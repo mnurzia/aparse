@@ -5,16 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define AP_ARG_FLAG_OPT 1
-#define AP_ARG_FLAG_REQUIRED 2
-#define AP_ARG_FLAG_SUB 4
-#define AP_ARG_FLAG_COALESCE 8
-#define AP_ARG_FLAG_DESTRUCTOR 16
+#define AP_ARG_FLAG_OPT 0x1         /* optional argument */
+#define AP_ARG_FLAG_REQUIRED 0x2    /* required positional argument */
+#define AP_ARG_FLAG_SUB 0x4         /* subparser argument */
+#define AP_ARG_FLAG_COALESCE 0x8    /* coalesce short opt in usage */
+#define AP_ARG_FLAG_DESTRUCTOR 0x10 /* arg callback has embedded dtor */
 
 typedef struct ap_arg ap_arg;
 
 struct ap_arg {
-  int flags;
+  int flags;            /* bitset of AP_ARG_FLAG_xxx */
   ap_arg *next;         /* next argument in list */
   ap_cb cb;             /* callback */
   const char *metavar;  /* metavar */
@@ -23,13 +23,6 @@ struct ap_arg {
   char opt_short;       /* if short option, option character */
   void *user;           /* user pointer */
   void *user1;          /* second user pointer (convenient) */
-};
-
-/* parent linked list used in argument search order */
-typedef struct ap_parent ap_parent;
-struct ap_parent {
-  ap *par;
-  ap_parent *next;
 };
 
 /* subparser linked list used in subparser search order */
@@ -47,7 +40,7 @@ struct ap {
   ap_arg *args;            /* argument list */
   ap_arg *args_tail;       /* end of argument list */
   ap_arg *current;         /* current arg under modification */
-  ap_parent *parents;      /* parent list for argument search order */
+  ap *parent;              /* parent for subparser arg search */
   const char *description; /* help description */
   const char *epilog;      /* help epilog */
 };
@@ -111,7 +104,7 @@ int ap_init_full(ap **out, const char *progname, const ap_ctxcb *pctxcb) {
   par->args = NULL;
   par->args_tail = NULL;
   par->current = NULL;
-  par->parents = NULL;
+  par->parent = NULL;
   *out = par;
   return AP_ERR_NONE;
 }
@@ -465,6 +458,27 @@ ap_arg *ap_find_next_positional(ap_arg *arg) {
   return arg;
 }
 
+typedef struct ap_iter {
+  ap_arg *arg;
+  ap *parent;
+} ap_iter;
+
+ap_iter ap_iter_init(ap *parent) {
+  ap_iter out;
+  out.arg = parent->args;
+  out.parent = parent;
+  return out;
+}
+
+ap_arg *ap_iter_next(ap_iter *iter) {
+  ap_arg *out = iter->arg;
+  if (out && !out->next) {
+    iter->parent = iter->parent->parent;
+    iter->arg = (iter->parent) ? iter->parent->args : NULL;
+  }
+  return out;
+}
+
 int ap_parse_internal(ap *par, ap_parser *ctx) {
   int err;
   ap_arg *next_positional = ap_find_next_positional(par->args);
@@ -477,9 +491,10 @@ int ap_parse_internal(ap *par, ap_parser *ctx) {
       while (ctx->idx == saved_idx && ap_parser_cur(ctx) &&
              *ap_parser_cur(ctx)) {
         /* accumulate chained short opts */
-        ap_arg *search = par->args;
+        ap_iter iter = ap_iter_init(par);
+        ap_arg *search;
         char opt_short = *ap_parser_cur(ctx);
-        while (search) {
+        while ((search = ap_iter_next(&iter))) {
           if ((search->flags & AP_ARG_FLAG_OPT) &&
               search->opt_short == opt_short) {
             /* found arg with matching short opt */
@@ -492,7 +507,6 @@ int ap_parse_internal(ap *par, ap_parser *ctx) {
             assert(ctx->idx != saved_idx ? !ctx->arg_idx : 1);
             break;
           }
-          search = search->next;
         }
         if (!search)
           /* arg not found */
@@ -503,9 +517,10 @@ int ap_parse_internal(ap *par, ap_parser *ctx) {
     } else if (ap_parser_cur(ctx)[0] == '-' && ap_parser_cur(ctx)[1] == '-' &&
                ap_parser_cur(ctx)[2]) {
       /* long optional "--option..."*/
-      ap_arg *search = par->args;
+      ap_iter iter = ap_iter_init(par);
+      ap_arg *search;
       ap_parser_advance(ctx, 2);
-      while (search) {
+      while ((search = ap_iter_next(&iter))) {
         if ((search->flags & AP_ARG_FLAG_OPT) &&
             !strcmp(search->opt_long, ap_parser_cur(ctx))) {
           /* found arg with matching long opt */
@@ -519,7 +534,6 @@ int ap_parse_internal(ap *par, ap_parser *ctx) {
           assert(ctx->idx != prev_idx);
           break;
         }
-        search = search->next;
       }
       if (!search)
         /* arg not found */
