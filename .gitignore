@@ -82,3 +82,4 @@ Temporary Items
 build/
 _cpack/
 .cache/
+.vscode/
