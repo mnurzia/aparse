@@ -94,7 +94,7 @@ int ap_pstrs(ap *par, ap_print_func out, const char *fmt, ...) {
           goto done;
       } else if (*fmt == 'c') {
         int _arg = va_arg(args, int);
-        char arg = _arg;
+        char arg = (char)_arg;
         if (arg && (err = out(par, &arg, 1)))
           goto done;
       } else {
@@ -104,7 +104,7 @@ int ap_pstrs(ap *par, ap_print_func out, const char *fmt, ...) {
       const char *begin = fmt;
       while (*(fmt + 1) && (*(fmt + 1) != '%'))
         fmt++;
-      if ((err = out(par, begin, (fmt - begin) + 1)))
+      if ((err = out(par, begin, (size_t)(fmt - begin) + 1)))
         goto done;
     }
     fmt++;
@@ -478,7 +478,7 @@ int ap_parse_internal_part(ap *par, ap_arg *arg, ap_parser *ctx) {
       /* (error) couldn't find subparser */
       return AP_ERR_PARSE;
     found:
-      ap_parser_advance(ctx, strlen(sub->identifier));
+      ap_parser_advance(ctx, (int)strlen(sub->identifier));
       return ap_parse_internal(sub->par, ctx);
     }
   }
