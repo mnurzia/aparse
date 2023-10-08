@@ -74,11 +74,10 @@ int ap_cb_err(ap *parser, const char *text, size_t n) {
              : (fwrite(text, 1, n, stderr) < n ? AP_ERR_IO : AP_ERR_NONE);
 }
 
+/* wrappers for out an err to be used as selectable print funcs */
 int ap_out(ap *par, const char *text) {
   return ap_cb_out(par, text, strlen(text));
 }
-
-int ap_outc(ap *par, char text) { return ap_cb_out(par, &text, 1); }
 
 int ap_err(ap *par, const char *text) {
   return ap_cb_err(par, text, strlen(text));
