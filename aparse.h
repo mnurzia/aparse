@@ -47,7 +47,10 @@ ap *ap_init(const char *progname);
  * - pctxcb: library callbacks (see `ap_ctxcb`)
  * return:
  * - AP_ERR_NONE: no error
- * - AP_ERR_NOMEM: out of memory */
+ * - AP_ERR_NOMEM: out of memory
+ *
+ * If `pctxcb` is NULL, default values are used (stdlib malloc, fread, fwrite,
+ * etc.)*/
 int ap_init_full(ap **out, const char *progname, const ap_ctxcb *pctxcb);
 
 /* destroy parser

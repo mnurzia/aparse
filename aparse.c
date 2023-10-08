@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* argument flags */
 #define AP_ARG_FLAG_OPT 0x1         /* optional argument */
 #define AP_ARG_FLAG_REQUIRED 0x2    /* required positional argument */
 #define AP_ARG_FLAG_SUB 0x4         /* subparser argument */
@@ -13,6 +14,7 @@
 
 typedef struct ap_arg ap_arg;
 
+/* internal argument structure */
 struct ap_arg {
   int flags;            /* bitset of AP_ARG_FLAG_xxx */
   ap_arg *next;         /* next argument in list */
@@ -22,7 +24,7 @@ struct ap_arg {
   const char *opt_long; /* long opt */
   char opt_short;       /* if short option, option character */
   void *user;           /* user pointer */
-  void *user1;          /* second user pointer (convenient) */
+  void *user1;          /* second user pointer (used for subparser) */
 };
 
 /* subparser linked list used in subparser search order */
@@ -83,18 +85,23 @@ int ap_err(ap *par, const char *text) {
   return ap_cb_err(par, text, strlen(text));
 }
 
+/* default callbacks (stubbed to NULL so that we know to use default funcs) */
 static const ap_ctxcb ap_default_ctxcb = {NULL, NULL, NULL, NULL, NULL, NULL};
 
 ap *ap_init(const char *progname) {
   ap *out;
+  /* just wrap `ap_init_full` for convenience */
   return (ap_init_full(&out, progname, NULL) == AP_ERR_NONE) ? out : NULL;
 }
 
 int ap_init_full(ap **out, const char *progname, const ap_ctxcb *pctxcb) {
   ap *par;
+  /* do a little dance to use the correct malloc callback before we've actually
+   * allocated memory for the parser */
   pctxcb = pctxcb ? pctxcb : &ap_default_ctxcb;
   par = pctxcb->malloc ? pctxcb->malloc(pctxcb->uptr, sizeof(ap))
                        : malloc(sizeof(ap));
+  memset(par, 0, sizeof(*par));
   if (!par)
     return AP_ERR_NOMEM;
   par->ctxcb = pctxcb;
@@ -111,6 +118,7 @@ void ap_destroy(ap *par) {
   while (par->args) {
     ap_arg *prev = par->args;
     if (prev->flags & AP_ARG_FLAG_SUB) {
+      /* destroy subparser */
       ap_sub *sub = (ap_sub *)prev->user;
       while (sub) {
         ap_sub *prev_sub = sub;
