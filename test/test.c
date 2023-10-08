@@ -242,7 +242,7 @@ TEST(help_opts) {
   ap_help(parser, "option");
   ASSERT(!ap_show_help(parser));
   ASSERT(!strcmp(b.out,
-                 "usage: abc [-o]\n\ndescription\n\noptional arguments:\n  -o, "
+                 "usage: abc [-o]\n\ndescription\n\noptional arguments:\n  -o,"
                  "--opt\n    option\n\nepilog\n"));
 done:
   ap_destroy(parser);
@@ -265,9 +265,9 @@ TEST(type_enum) {
     goto done;
   ap_help(parser, "option");
   ASSERT(!ap_show_help(parser));
-  ASSERT(!strcmp(
-      b.out, "usage: abc [-e {a,bcd}]\n\noptional arguments:\n  -e {a,bcd}, "
-             "--enum {a,bcd}\n    option\n"));
+  ASSERT(!strcmp(b.out,
+                 "usage: abc [-e {a,bcd}]\n\noptional arguments:\n  -e {a,bcd},"
+                 "--enum {a,bcd}\n    option\n"));
   ASSERT(!ap_parse(parser, argc, argv));
   ASSERT(flag == 1);
 done:

@@ -1,6 +1,7 @@
 #include "aparse.h"
 
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,13 +77,41 @@ int ap_cb_err(ap *parser, const char *text, size_t n) {
              : (fwrite(text, 1, n, stderr) < n ? AP_ERR_IO : AP_ERR_NONE);
 }
 
-/* wrappers for out an err to be used as selectable print funcs */
-int ap_out(ap *par, const char *text) {
-  return ap_cb_out(par, text, strlen(text));
-}
+typedef int (*ap_print_func)(ap *par, const char *string, size_t n);
 
-int ap_err(ap *par, const char *text) {
-  return ap_cb_err(par, text, strlen(text));
+/* printf-like implementation */
+int ap_pstrs(ap *par, ap_print_func out, const char *fmt, ...) {
+  int err = AP_ERR_NONE;
+  va_list args;
+  va_start(args, fmt);
+  while (*fmt) {
+    if (*fmt == '%') {
+      ++fmt;
+      if (*fmt == 's') {
+        const char *arg = va_arg(args, const char *);
+        assert(arg);
+        if ((err = out(par, arg, strlen(arg))))
+          goto done;
+      } else if (*fmt == 'c') {
+        int _arg = va_arg(args, int);
+        char arg = _arg;
+        if (arg && (err = out(par, &arg, 1)))
+          goto done;
+      } else {
+        assert(0); /* internal error */
+      }
+    } else {
+      const char *begin = fmt;
+      while (*(fmt + 1) && (*(fmt + 1) != '%'))
+        fmt++;
+      if ((err = out(par, begin, (fmt - begin) + 1)))
+        goto done;
+    }
+    fmt++;
+  }
+done:
+  va_end(args);
+  return err;
 }
 
 /* default callbacks (stubbed to NULL so that we know to use default funcs) */
@@ -127,6 +156,7 @@ void ap_destroy(ap *par) {
         ap_cb_free(par, prev_sub);
       }
     } else if (prev->flags & AP_ARG_FLAG_DESTRUCTOR) {
+      /* destroy arguments that requested it */
       ap_cb_data data = {0};
       data.destroy = 1;
       data.parser = par;
@@ -357,9 +387,7 @@ void ap_type_help(ap *par) { ap_type_custom(par, ap_help_cb, NULL); }
 
 int ap_version_cb(void *uptr, ap_cb_data *pdata) {
   int err;
-  if ((err = ap_out(pdata->parser, (const char *)uptr)))
-    return err;
-  if ((err = ap_out(pdata->parser, "\n")))
+  if ((err = ap_pstrs(pdata->parser, ap_cb_err, "%s\n", (const char *)uptr)))
     return err;
   return AP_ERR_EXIT;
 }
@@ -571,17 +599,12 @@ int ap_parse(ap *par, int argc, const char *const *argv) {
   return ap_parse_internal(par, &parser);
 }
 
-typedef int (*ap_print_func)(ap *par, const char *string);
-
 int ap_usage(ap *par, ap_print_func out) {
   /* print usage without a newline */
   int err = AP_ERR_NONE;
   ap_arg *arg = par->args;
-  char short_opt[2] = {0, 0};
   assert(par->progname);
-  if ((err = out(par, "usage: ")))
-    return err;
-  if ((err = out(par, par->progname)))
+  if ((err = ap_pstrs(par, out, "usage: %s", par->progname)))
     return err;
   {
     /* coalesce short args */
@@ -590,13 +613,11 @@ int ap_usage(ap *par, ap_print_func out) {
       if (!((arg->flags & AP_ARG_FLAG_OPT) &&
             (arg->flags & AP_ARG_FLAG_COALESCE) && arg->opt_short))
         continue;
-      if (!(any++) && (err = out(par, " [-")))
-        return err;
-      short_opt[0] = arg->opt_short;
-      if ((err = out(par, short_opt)))
+      if ((err = ap_pstrs(par, out, "%s%c", !(any++) ? " [-" : "",
+                          arg->opt_short)))
         return err;
     }
-    if (any && (err = out(par, "]")))
+    if (any && (err = ap_pstrs(par, out, "]")))
       return err;
   }
   {
@@ -606,19 +627,14 @@ int ap_usage(ap *par, ap_print_func out) {
             !((arg->flags & AP_ARG_FLAG_COALESCE) && arg->opt_short)))
         continue;
       assert(arg->opt_long || arg->opt_short);
-      short_opt[0] = arg->opt_short;
-      if (/* short argument */ arg->opt_short &&
-          ((err = out(par, " [-")) || (err = out(par, short_opt))))
-
+      if (arg->opt_short && (err = ap_pstrs(par, out, " [-%c", arg->opt_short)))
         return err;
-      else if (
-          /* long argument */ !arg->opt_short &&
-          ((err = out(par, " [--")) || (err = out(par, arg->opt_long))))
+      else if (!arg->opt_short &&
+               (err = ap_pstrs(par, out, " [--%s", arg->opt_long)))
         return err;
-      if (arg->metavar &&
-          ((err = out(par, " ")) || (err = out(par, arg->metavar))))
+      if (arg->metavar && (err = ap_pstrs(par, out, " %s", arg->metavar)))
         return err;
-      if ((err = out(par, "]")))
+      if ((err = ap_pstrs(par, out, "]")))
         return err;
     }
   }
@@ -628,7 +644,7 @@ int ap_usage(ap *par, ap_print_func out) {
       if (arg->flags & AP_ARG_FLAG_OPT)
         continue;
       assert(arg->metavar);
-      if ((err = out(par, " ")) || (err = out(par, arg->metavar)))
+      if ((err = ap_pstrs(par, out, " %s", arg->metavar)))
         return err;
     }
   }
@@ -641,37 +657,34 @@ int ap_show_argspec(ap *par, ap_arg *arg, ap_print_func out, int with_metavar) {
     /* optionals */
     char short_opt[2] = {0, 0};
     short_opt[0] = arg->opt_short;
-    if (arg->opt_short &&
-        ((err = out(par, "-")) || (err = out(par, short_opt))))
+    if (arg->opt_short && (err = ap_pstrs(par, out, "-%c", arg->opt_short)))
       return err;
     if (with_metavar && arg->metavar &&
-        ((err = out(par, " ")) || (err = out(par, arg->metavar))))
+        (err = ap_pstrs(par, out, " %s", arg->metavar)))
       return err;
-    if (arg->opt_long && arg->opt_short && (err = out(par, ", ")))
+    if (arg->opt_long && arg->opt_short && (err = ap_pstrs(par, out, ",")))
       return err;
-    if (arg->opt_long &&
-        ((err = out(par, "--")) || (err = out(par, arg->opt_long))))
+    if (arg->opt_long && (err = ap_pstrs(par, out, "--%s", arg->opt_long)))
       return err;
     if (with_metavar && arg->metavar &&
-        ((err = out(par, " ")) || (err = out(par, arg->metavar))))
+        (err = ap_pstrs(par, out, " %s", arg->metavar)))
       return err;
-  } else if ((err = out(par, arg->metavar)))
+  } else if ((err = ap_pstrs(par, out, " %s", arg->metavar)))
     /* positionals */
     return err;
   return AP_ERR_NONE;
 }
 
-int ap_show_usage(ap *par) { return ap_usage(par, ap_out); }
+int ap_show_usage(ap *par) { return ap_usage(par, ap_cb_out); }
 
 int ap_show_help(ap *par) {
   int err = AP_ERR_NONE;
   if ((err = ap_show_usage(par)))
     return err;
-  if ((err = ap_out(par, "\n")))
+  if ((err = ap_pstrs(par, ap_cb_out, "\n")))
     return err;
   if (par->description &&
-      ((err = ap_out(par, "\n")) || (err = ap_out(par, par->description)) ||
-       (err = ap_out(par, "\n"))))
+      (err = ap_pstrs(par, ap_cb_out, "\n%s\n", par->description)))
     return err;
   {
     int any = 0;
@@ -680,17 +693,14 @@ int ap_show_help(ap *par) {
       /* positional arguments */
       if (arg->flags & AP_ARG_FLAG_OPT)
         continue;
-      if (!(any++) && ((err = ap_out(par, "\n")) ||
-                       (err = ap_out(par, "positional arguments:")) ||
-                       (err = ap_out(par, "\n"))))
+      if (!(any++) &&
+          (err = ap_pstrs(par, ap_cb_out, "\npositional arguments:\n")))
         return err;
-      if ((err = ap_out(par, "  ")) ||
-          (err = ap_show_argspec(par, arg, ap_out, 1)) ||
-          (err = ap_out(par, "\n")))
+      if ((err = ap_pstrs(par, ap_cb_out, "  ")) ||
+          (err = ap_show_argspec(par, arg, ap_cb_out, 1)) ||
+          (err = ap_pstrs(par, ap_cb_out, "\n")))
         return err;
-      if (arg->help &&
-          ((err = ap_out(par, "    ")) || (err = ap_out(par, arg->help)) ||
-           (err = ap_out(par, "\n"))))
+      if (arg->help && (err = ap_pstrs(par, ap_cb_out, "    %s\n", arg->help)))
         return err;
     }
     any = 0;
@@ -699,41 +709,35 @@ int ap_show_help(ap *par) {
       if (!(arg->flags & AP_ARG_FLAG_OPT))
         continue;
       assert(arg->opt_long || arg->opt_short);
-      if (!(any++) && ((err = ap_out(par, "\n")) ||
-                       (err = ap_out(par, "optional arguments:")) ||
-                       (err = ap_out(par, "\n"))))
+      if (!(any++) &&
+          (err = ap_pstrs(par, ap_cb_out, "\noptional arguments:\n")))
         return err;
-      if ((err = ap_out(par, "  ")) ||
-          (err = ap_show_argspec(par, arg, ap_out, 1)) ||
-          (err = ap_out(par, "\n")))
+      if ((err = ap_pstrs(par, ap_cb_out, "  ")) ||
+          (err = ap_show_argspec(par, arg, ap_cb_out, 1)) ||
+          (err = ap_pstrs(par, ap_cb_out, "\n")))
         return err;
-      if (arg->help &&
-          ((err = ap_out(par, "    ")) || (err = ap_out(par, arg->help)) ||
-           (err = ap_out(par, "\n"))))
+      if (arg->help && (err = ap_pstrs(par, ap_cb_out, "    %s\n", arg->help)))
         return err;
     }
   }
-  if (par->epilog &&
-      ((err = ap_out(par, "\n")) || (err = ap_out(par, par->epilog)) ||
-       (err = ap_out(par, "\n"))))
+  if (par->epilog && (err = ap_pstrs(par, ap_cb_out, "\n%s\n", par->epilog)))
     return err;
   return err;
 }
 
 int ap_error_prefix(ap *par) {
   int err;
-  if ((err = ap_usage(par, ap_err)))
+  if ((err = ap_usage(par, ap_cb_err)))
     return err;
-  if ((err = ap_err(par, "\n")) || (err = ap_err(par, par->progname)) ||
-      (err = ap_err(par, ": ")) || (err = ap_err(par, "error: ")))
+  if ((err = ap_pstrs(par, ap_cb_err, "\n%s: error: ", par->progname)))
     return err;
   return err;
 }
 
 int ap_error(ap *par, const char *error_string) {
   int err;
-  if ((err = ap_error_prefix(par)) || (err = ap_err(par, error_string)) ||
-      (err = ap_err(par, "\n")))
+  if ((err = ap_error_prefix(par)) ||
+      (err = ap_pstrs(par, ap_cb_err, "%s\n", error_string)))
     return err;
   return AP_ERR_NONE;
 }
@@ -744,10 +748,10 @@ int ap_arg_error(ap_cb_data *cbd, const char *error_string) {
   ap_arg *arg = cbd->reserved;
   /* if this fails, you tried to call ap_arg_error from a destructor callback */
   assert(!arg || cbd->destroy);
-  if ((err = ap_error_prefix(par)) || (err = ap_err(par, "argument ")) ||
-      (err = ap_show_argspec(par, arg, ap_err, 0)) ||
-      (err = ap_err(par, ": ")) || (err = ap_err(par, error_string)) ||
-      (err = ap_err(par, "\n")))
+  if ((err = ap_error_prefix(par)) ||
+      (err = ap_pstrs(par, ap_cb_err, "argument ")) ||
+      (err = ap_show_argspec(par, arg, ap_cb_err, 0)) ||
+      (err = ap_pstrs(par, ap_cb_err, ": %s\n", error_string)))
     return err;
   return AP_ERR_PARSE;
 }
