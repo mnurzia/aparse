@@ -31,6 +31,7 @@ typedef struct ap_cb_data {
   int arg_len;
   int idx;
   int more;
+  int destroy;
 } ap_cb_data;
 
 typedef int (*ap_cb)(void *uptr, ap_cb_data *pdata);
@@ -38,16 +39,11 @@ typedef int (*ap_cb)(void *uptr, ap_cb_data *pdata);
 ap *ap_init(const char *progname);
 int ap_init_full(ap **out, const char *progname, const ap_ctxcb *pctxcb);
 void ap_destroy(ap *par);
+void ap_description(ap *par, const char *description);
+void ap_epilog(ap *par, const char *epilog);
 
-int ap_begin_pos(ap *par, const char *metavar);
-int ap_begin_opt(ap *par, char short_opt, const char *long_opt);
-int ap_begin_sub(ap *par, const char *metavar);
-
-void ap_end(ap *par); /* can only fail assert */
-
-void ap_help(ap *par, const char *help_text);
-
-int ap_sub_add(ap *par, const char *name, ap **subpar);
+int ap_pos(ap *par, const char *metavar);
+int ap_opt(ap *par, char short_opt, const char *long_opt);
 
 void ap_type_flag(ap *par, int *out);
 void ap_type_int(ap *par, int *out);
@@ -55,8 +51,16 @@ void ap_type_str(ap *par, const char **out);
 void ap_type_str_n(ap *par, const char **out, size_t *out_sz);
 void ap_type_enum(ap *par, int *out, const char **choices);
 
+void ap_help(ap *par, const char *help);
+
+void ap_type_sub(ap *par, const char *metavar, int *out_idx);
+int ap_sub_add(ap *par, const char *name, ap **subpar);
+
 void ap_type_custom(ap *par, ap_cb callback, void *user);
 
 int ap_parse(ap *par, int argc, const char *const *argv);
+
+int ap_show_help(ap *par);
+int ap_show_usage(ap *par);
 
 #endif

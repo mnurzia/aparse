@@ -1,4 +1,5 @@
 #include <aparse.h>
+#include <string.h>
 
 #define MPTEST_IMPLEMENTATION
 #include "mptest.h"
@@ -31,10 +32,9 @@ TEST(opt_short_only) {
   const char *const argv[] = {"-O", NULL};
   if (!parser)
     goto done;
-  if (ap_begin_opt(parser, 'O', NULL))
+  if (ap_opt(parser, 'O', NULL))
     goto done;
   ap_type_flag(parser, &flag);
-  ap_end(parser);
   if ((err = ap_parse(parser, argc, argv) == AP_ERR_NOMEM))
     goto done;
   ASSERT(!err);
@@ -52,10 +52,9 @@ TEST(opt_long_only) {
   const char *const argv[] = {"--option", NULL};
   if (!parser)
     goto done;
-  if (ap_begin_opt(parser, 0, "option"))
+  if (ap_opt(parser, 0, "option"))
     goto done;
   ap_type_flag(parser, &flag);
-  ap_end(parser);
   if ((err = ap_parse(parser, argc, argv) == AP_ERR_NOMEM))
     goto done;
   ASSERT(!err);
@@ -73,10 +72,9 @@ TEST(opt_unspecified) {
   const char *const argv[] = {NULL};
   if (!parser)
     goto done;
-  if (ap_begin_opt(parser, 'O', "option"))
+  if (ap_opt(parser, 'O', "option"))
     goto done;
   ap_type_flag(parser, &flag);
-  ap_end(parser);
   if ((err = ap_parse(parser, argc, argv) == AP_ERR_NOMEM))
     goto done;
   ASSERT(!err);
@@ -94,10 +92,9 @@ TEST(opt_short_specified) {
   const char *const argv[] = {"-O", NULL};
   if (!parser)
     goto done;
-  if (ap_begin_opt(parser, 'O', "option"))
+  if (ap_opt(parser, 'O', "option"))
     goto done;
   ap_type_flag(parser, &flag);
-  ap_end(parser);
   if ((err = ap_parse(parser, argc, argv) == AP_ERR_NOMEM))
     goto done;
   ASSERT(!err);
@@ -115,10 +112,9 @@ TEST(opt_long_specified) {
   const char *const argv[] = {"--option", NULL};
   if (!parser)
     goto done;
-  if (ap_begin_opt(parser, 'O', "option"))
+  if (ap_opt(parser, 'O', "option"))
     goto done;
   ap_type_flag(parser, &flag);
-  ap_end(parser);
   if ((err = ap_parse(parser, argc, argv) == AP_ERR_NOMEM))
     goto done;
   ASSERT(!err);
@@ -136,10 +132,9 @@ TEST(pos_specified) {
   const char *const argv[] = {"1", NULL};
   if (!parser)
     goto done;
-  if (ap_begin_pos(parser, "option"))
+  if (ap_pos(parser, "option"))
     goto done;
   ap_type_int(parser, &flag);
-  ap_end(parser);
   if ((err = ap_parse(parser, argc, argv) == AP_ERR_NOMEM))
     goto done;
   ASSERT(!err);
@@ -152,16 +147,103 @@ done:
 TEST(sub_empty) {
   ap *parser = ap_init("test");
   int err = 0;
-  int argc = 0;
-  const char *const argv[] = {NULL};
+  int argc = 1;
+  int out_idx = 0;
+  int arg = 0;
+  const char *const argv[] = {"1"};
   if (!parser)
     goto done;
-  if (ap_begin_sub(parser, "command"))
+  if (ap_pos(parser, "command"))
     goto done;
-  ap_end(parser);
+  ap_type_sub(parser, "command", &out_idx);
+  {
+    ap *sub;
+    if (ap_sub_add(parser, NULL, &sub))
+      goto done;
+    if (ap_pos(sub, "test"))
+      goto done;
+    ap_type_int(sub, &arg);
+  }
   if ((err = ap_parse(parser, argc, argv)) == AP_ERR_NOMEM)
     goto done;
-  ASSERT(err == AP_ERR_PARSE);
+  ASSERT(!err);
+  ASSERT(arg == 1);
+done:
+  ap_destroy(parser);
+  PASS();
+}
+
+struct bufs {
+  char out[2048];
+  char err[2048];
+};
+
+int dummy_out_cb(void *uptr, const char *text, size_t n) {
+  if (uptr)
+    strncat(((struct bufs *)uptr)->out, text, n);
+  return AP_ERR_NONE;
+}
+
+int dummy_err_cb(void *uptr, const char *text, size_t n) {
+  if (uptr)
+    strncat(((struct bufs *)uptr)->err, text, n);
+  return AP_ERR_NONE;
+}
+
+ap *make_out_hooks(ap_ctxcb *cb, struct bufs *bufs) {
+  ap *parser;
+  int err = AP_ERR_NONE;
+  cb->uptr = bufs;
+  cb->out = dummy_out_cb;
+  cb->err = dummy_err_cb;
+  if ((err = ap_init_full(&parser, "abc", cb)))
+    return NULL;
+  return parser;
+}
+
+TEST(usage_empty) {
+  ap_ctxcb cb = {0};
+  struct bufs b = {0};
+  ap *parser = make_out_hooks(&cb, &b);
+  if (!parser)
+    goto done;
+  ASSERT(!ap_show_usage(parser));
+  ASSERT(!strcmp(b.out, "usage: abc"));
+done:
+  ap_destroy(parser);
+  PASS();
+}
+
+TEST(help_empty) {
+  ap_ctxcb cb = {0};
+  struct bufs b = {0};
+  ap *parser = make_out_hooks(&cb, &b);
+  if (!parser)
+    goto done;
+  ASSERT(!ap_show_help(parser));
+  ASSERT(!strcmp(b.out, "usage: abc\n"));
+done:
+  ap_destroy(parser);
+  PASS();
+}
+
+TEST(help_opts) {
+  ap_ctxcb cb = {0};
+  struct bufs b = {0};
+  ap *parser = make_out_hooks(&cb, &b);
+  int dummy_flag;
+  if (!parser)
+    goto done;
+  ap_description(parser, "description");
+  ap_epilog(parser, "epilog");
+  if (ap_opt(parser, 'o', "opt"))
+    goto done;
+  ap_type_flag(parser, &dummy_flag);
+  ap_help(parser, "option");
+  ASSERT(!ap_show_help(parser));
+  ASSERT(!strcmp(b.out,
+                 "usage: abc [-o]\n\ndescription\n\noptional arguments:\n  -o, "
+                 "--opt\n    option\n\nepilog\n"));
 done:
   ap_destroy(parser);
   PASS();
@@ -178,5 +260,8 @@ int main(int argc, const char *const *argv) {
   RUN_TEST(opt_long_specified);
   RUN_TEST(pos_specified);
   RUN_TEST(sub_empty);
+  RUN_TEST(usage_empty);
+  RUN_TEST(help_empty);
+  RUN_TEST(help_opts);
   MPTEST_MAIN_END();
 }
