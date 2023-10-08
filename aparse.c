@@ -29,7 +29,7 @@ struct ap_arg {
 typedef struct ap_sub ap_sub;
 struct ap_sub {
   const char *identifier; /* command name */
-  ap *par;
+  ap *par;                /* the subparser itself*/
   ap_sub *next;
 };
 
@@ -45,6 +45,7 @@ struct ap {
   const char *epilog;      /* help epilog */
 };
 
+/* callback wrappers */
 void *ap_cb_malloc(ap *parser, size_t n) {
   return parser->ctxcb->malloc ? parser->ctxcb->malloc(parser->ctxcb->uptr, n)
                                : malloc(n);
@@ -67,19 +68,17 @@ int ap_cb_out(ap *parser, const char *text, size_t n) {
              : (fwrite(text, 1, n, stdout) < n ? AP_ERR_IO : AP_ERR_NONE);
 }
 
-int ap_out(ap *par, const char *text) {
-  return ap_cb_out(par, text, strlen(text));
-}
-
-int ap_outc(ap *par, char text) { return ap_cb_out(par, &text, 1); }
-
-int ap_feed(ap *par) { return ap_out(par, "\n"); }
-
 int ap_cb_err(ap *parser, const char *text, size_t n) {
   return parser->ctxcb->err
              ? parser->ctxcb->err(parser->ctxcb->uptr, text, n)
              : (fwrite(text, 1, n, stderr) < n ? AP_ERR_IO : AP_ERR_NONE);
 }
+
+int ap_out(ap *par, const char *text) {
+  return ap_cb_out(par, text, strlen(text));
+}
+
+int ap_outc(ap *par, char text) { return ap_cb_out(par, &text, 1); }
 
 int ap_err(ap *par, const char *text) {
   return ap_cb_err(par, text, strlen(text));
@@ -353,7 +352,7 @@ int ap_version_cb(void *uptr, ap_cb_data *pdata) {
   int err;
   if ((err = ap_out(pdata->parser, (const char *)uptr)))
     return err;
-  if ((err = ap_feed(pdata->parser)))
+  if ((err = ap_out(pdata->parser, "\n")))
     return err;
   return AP_ERR_EXIT;
 }
@@ -661,11 +660,11 @@ int ap_show_help(ap *par) {
   int err = AP_ERR_NONE;
   if ((err = ap_show_usage(par)))
     return err;
-  if ((err = ap_feed(par)))
+  if ((err = ap_out(par, "\n")))
     return err;
   if (par->description &&
-      ((err = ap_feed(par)) || (err = ap_out(par, par->description)) ||
-       (err = ap_feed(par))))
+      ((err = ap_out(par, "\n")) || (err = ap_out(par, par->description)) ||
+       (err = ap_out(par, "\n"))))
     return err;
   {
     int any = 0;
@@ -674,15 +673,17 @@ int ap_show_help(ap *par) {
       /* positional arguments */
       if (arg->flags & AP_ARG_FLAG_OPT)
         continue;
-      if (!(any++) && ((err = ap_feed(par)) ||
+      if (!(any++) && ((err = ap_out(par, "\n")) ||
                        (err = ap_out(par, "positional arguments:")) ||
-                       (err = ap_feed(par))))
+                       (err = ap_out(par, "\n"))))
         return err;
       if ((err = ap_out(par, "  ")) ||
-          (err = ap_show_argspec(par, arg, ap_out, 1)) || (err = ap_feed(par)))
+          (err = ap_show_argspec(par, arg, ap_out, 1)) ||
+          (err = ap_out(par, "\n")))
         return err;
-      if (arg->help && ((err = ap_out(par, "    ")) ||
-                        (err = ap_out(par, arg->help)) || (err = ap_feed(par))))
+      if (arg->help &&
+          ((err = ap_out(par, "    ")) || (err = ap_out(par, arg->help)) ||
+           (err = ap_out(par, "\n"))))
         return err;
     }
     any = 0;
@@ -691,20 +692,23 @@ int ap_show_help(ap *par) {
       if (!(arg->flags & AP_ARG_FLAG_OPT))
         continue;
       assert(arg->opt_long || arg->opt_short);
-      if (!(any++) &&
-          ((err = ap_feed(par)) || (err = ap_out(par, "optional arguments:")) ||
-           (err = ap_feed(par))))
+      if (!(any++) && ((err = ap_out(par, "\n")) ||
+                       (err = ap_out(par, "optional arguments:")) ||
+                       (err = ap_out(par, "\n"))))
         return err;
       if ((err = ap_out(par, "  ")) ||
-          (err = ap_show_argspec(par, arg, ap_out, 1)) || (err = ap_feed(par)))
+          (err = ap_show_argspec(par, arg, ap_out, 1)) ||
+          (err = ap_out(par, "\n")))
         return err;
-      if (arg->help && ((err = ap_out(par, "    ")) ||
-                        (err = ap_out(par, arg->help)) || (err = ap_feed(par))))
+      if (arg->help &&
+          ((err = ap_out(par, "    ")) || (err = ap_out(par, arg->help)) ||
+           (err = ap_out(par, "\n"))))
         return err;
     }
   }
-  if (par->epilog && ((err = ap_feed(par)) ||
-                      (err = ap_out(par, par->epilog)) || (err = ap_feed(par))))
+  if (par->epilog &&
+      ((err = ap_out(par, "\n")) || (err = ap_out(par, par->epilog)) ||
+       (err = ap_out(par, "\n"))))
     return err;
   return err;
 }
