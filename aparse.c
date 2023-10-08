@@ -74,10 +74,22 @@ int ap_cb_out(ap *parser, const char *text, size_t n) {
              : (fwrite(text, 1, n, stdout) < n ? AP_ERR_IO : AP_ERR_NONE);
 }
 
+int ap_out(ap *par, const char *text) {
+  return ap_cb_out(par, text, strlen(text));
+}
+
+int ap_outc(ap *par, char text) { return ap_cb_out(par, &text, 1); }
+
+int ap_feed(ap *par) { return ap_out(par, "\n"); }
+
 int ap_cb_err(ap *parser, const char *text, size_t n) {
   return parser->ctxcb->err
              ? parser->ctxcb->err(parser->ctxcb->uptr, text, n)
              : (fwrite(text, 1, n, stderr) < n ? AP_ERR_IO : AP_ERR_NONE);
+}
+
+int ap_err(ap *par, const char *text) {
+  return ap_cb_err(par, text, strlen(text));
 }
 
 static const ap_ctxcb ap_default_ctxcb = {NULL, NULL, NULL, NULL, NULL, NULL};
@@ -244,7 +256,8 @@ void ap_type_flag(ap *par, int *out) {
 }
 
 int ap_int_cb(void *uptr, ap_cb_data *pdata) {
-  sscanf(pdata->arg, "%i", (int *)uptr);
+  if (!sscanf(pdata->arg, "%i", (int *)uptr))
+    return ap_arg_error(pdata, "invalid integer argument");
   return pdata->arg_len;
 }
 
@@ -255,7 +268,7 @@ void ap_type_int(ap *par, int *out) {
 int ap_str_cb(void *uptr, ap_cb_data *pdata) {
   const char **out = (const char **)uptr;
   if (!pdata->arg)
-    return AP_ERR_PARSE;
+    return ap_arg_error(pdata, "expected an argument");
   *out = pdata->arg;
   return pdata->arg_len;
 }
@@ -285,7 +298,7 @@ int ap_enum_cb(void *uptr, ap_cb_data *pdata) {
       return pdata->arg_len;
     }
   }
-  return AP_ERR_PARSE;
+  return ap_arg_error(pdata, "invalid choice for argument");
 }
 
 int ap_type_enum(ap *par, int *out, const char **choices) {
@@ -332,6 +345,30 @@ int ap_type_enum(ap *par, int *out, const char **choices) {
   return AP_ERR_NONE;
 }
 
+int ap_help_cb(void *uptr, ap_cb_data *pdata) {
+  int err;
+  (void)uptr;
+  (void)pdata;
+  if ((err = ap_show_help(pdata->parser)))
+    return err;
+  return AP_ERR_EXIT;
+}
+
+void ap_type_help(ap *par) { ap_type_custom(par, ap_help_cb, NULL); }
+
+int ap_version_cb(void *uptr, ap_cb_data *pdata) {
+  int err;
+  if ((err = ap_out(pdata->parser, (const char *)uptr)))
+    return err;
+  if ((err = ap_feed(pdata->parser)))
+    return err;
+  return AP_ERR_EXIT;
+}
+
+void ap_type_version(ap *par, const char *version) {
+  ap_type_custom(par, ap_version_cb, (void *)version);
+}
+
 typedef struct ap_parser {
   int argc;
   const char *const *argv;
@@ -375,7 +412,7 @@ const char *ap_parser_cur(ap_parser *ctx) {
 
 int ap_parse_internal(ap *par, ap_parser *ctx);
 
-int ap_parse_internal_part(ap_arg *arg, ap_parser *ctx) {
+int ap_parse_internal_part(ap *par, ap_arg *arg, ap_parser *ctx) {
   int cb_ret, cb_sub_idx = 0;
   if (!(arg->flags & AP_ARG_FLAG_SUB)) {
     ap_cb_data cbd = {0};
@@ -384,6 +421,8 @@ int ap_parse_internal_part(ap_arg *arg, ap_parser *ctx) {
       cbd.arg_len = cbd.arg ? ctx->arg_len : 0;
       cbd.idx = cb_sub_idx++;
       cbd.more = 0;
+      cbd.reserved = arg;
+      cbd.parser = par;
       cb_ret = arg->cb(arg->user, &cbd);
       if (cb_ret < 0)
         /* callback encountered error in parse */
@@ -446,7 +485,7 @@ int ap_parse_internal(ap *par, ap_parser *ctx) {
             /* found arg with matching short opt */
             /* step over option char */
             ap_parser_advance(ctx, 1);
-            if ((err = ap_parse_internal_part(search, ctx)) < 0)
+            if ((err = ap_parse_internal_part(par, search, ctx)) < 0)
               return err;
             /* if this fails, your callback advanced to the next argument, but
              * did not fully consume that argument */
@@ -473,7 +512,7 @@ int ap_parse_internal(ap *par, ap_parser *ctx) {
           int prev_idx = ctx->idx;
           /* step over long opt name */
           ap_parser_advance(ctx, (int)strlen(search->opt_long));
-          if ((err = ap_parse_internal_part(search, ctx)) < 0)
+          if ((err = ap_parse_internal_part(par, search, ctx)) < 0)
             return err;
           /* if this fails, your callback did not consume every character of the
            * argument (it returned a value less than the argument length) */
@@ -493,7 +532,7 @@ int ap_parse_internal(ap *par, ap_parser *ctx) {
     } else {
       /* positional, includes "-" and "--" and "" */
       int part_ret = 0, prev_idx = ctx->idx;
-      if ((part_ret = ap_parse_internal_part(next_positional, ctx)) < 0)
+      if ((part_ret = ap_parse_internal_part(par, next_positional, ctx)) < 0)
         return part_ret;
       /* if this fails, your callback did not consume every character of the
        * argument (it returned a value less than the argument length) */
@@ -512,22 +551,17 @@ int ap_parse(ap *par, int argc, const char *const *argv) {
   return ap_parse_internal(par, &parser);
 }
 
-int ap_out(ap *par, const char *text) {
-  return ap_cb_out(par, text, strlen(text));
-}
+typedef int (*ap_print_func)(ap *par, const char *string);
 
-int ap_outc(ap *par, char text) { return ap_cb_out(par, &text, 1); }
-
-int ap_feed(ap *par) { return ap_out(par, "\n"); }
-
-int ap_show_usage(ap *par) {
+int ap_usage(ap *par, ap_print_func out) {
   /* print usage without a newline */
   int err = AP_ERR_NONE;
   ap_arg *arg = par->args;
+  char short_opt[2] = {0, 0};
   assert(par->progname);
-  if ((err = ap_out(par, "usage: ")))
+  if ((err = out(par, "usage: ")))
     return err;
-  if ((err = ap_out(par, par->progname)))
+  if ((err = out(par, par->progname)))
     return err;
   {
     /* coalesce short args */
@@ -536,12 +570,13 @@ int ap_show_usage(ap *par) {
       if (!((arg->flags & AP_ARG_FLAG_OPT) &&
             (arg->flags & AP_ARG_FLAG_COALESCE) && arg->opt_short))
         continue;
-      if (!(any++) && (err = ap_out(par, " [-")))
+      if (!(any++) && (err = out(par, " [-")))
         return err;
-      if ((err = ap_outc(par, arg->opt_short)))
+      short_opt[0] = arg->opt_short;
+      if ((err = out(par, short_opt)))
         return err;
     }
-    if (any && (err = ap_out(par, "]")))
+    if (any && (err = out(par, "]")))
       return err;
   }
   {
@@ -551,18 +586,19 @@ int ap_show_usage(ap *par) {
             !((arg->flags & AP_ARG_FLAG_COALESCE) && arg->opt_short)))
         continue;
       assert(arg->opt_long || arg->opt_short);
+      short_opt[0] = arg->opt_short;
       if (/* short argument */ arg->opt_short &&
-          ((err = ap_out(par, " [-")) || (err = ap_outc(par, arg->opt_short))))
+          ((err = out(par, " [-")) || (err = out(par, short_opt))))
 
         return err;
-      else if (/* long argument */ !arg->opt_short &&
-               ((err = ap_out(par, " [--")) ||
-                (err = ap_out(par, arg->opt_long))))
+      else if (
+          /* long argument */ !arg->opt_short &&
+          ((err = out(par, " [--")) || (err = out(par, arg->opt_long))))
         return err;
       if (arg->metavar &&
-          ((err = ap_out(par, " ")) || (err = ap_out(par, arg->metavar))))
+          ((err = out(par, " ")) || (err = out(par, arg->metavar))))
         return err;
-      if ((err = ap_out(par, "]")))
+      if ((err = out(par, "]")))
         return err;
     }
   }
@@ -572,12 +608,40 @@ int ap_show_usage(ap *par) {
       if (arg->flags & AP_ARG_FLAG_OPT)
         continue;
       assert(arg->metavar);
-      if ((err = ap_out(par, " ")) || (err = ap_out(par, arg->metavar)))
+      if ((err = out(par, " ")) || (err = out(par, arg->metavar)))
         return err;
     }
   }
   return err;
 }
+
+int ap_show_argspec(ap *par, ap_arg *arg, ap_print_func out, int with_metavar) {
+  int err;
+  if (arg->flags & AP_ARG_FLAG_OPT) {
+    /* optionals */
+    char short_opt[2] = {0, 0};
+    short_opt[0] = arg->opt_short;
+    if (arg->opt_short &&
+        ((err = out(par, "-")) || (err = out(par, short_opt))))
+      return err;
+    if (with_metavar && arg->metavar &&
+        ((err = out(par, " ")) || (err = out(par, arg->metavar))))
+      return err;
+    if (arg->opt_long && arg->opt_short && (err = out(par, ", ")))
+      return err;
+    if (arg->opt_long &&
+        ((err = out(par, "--")) || (err = out(par, arg->opt_long))))
+      return err;
+    if (with_metavar && arg->metavar &&
+        ((err = out(par, " ")) || (err = out(par, arg->metavar))))
+      return err;
+  } else if ((err = out(par, arg->metavar)))
+    /* positionals */
+    return err;
+  return AP_ERR_NONE;
+}
+
+int ap_show_usage(ap *par) { return ap_usage(par, ap_out); }
 
 int ap_show_help(ap *par) {
   int err = AP_ERR_NONE;
@@ -600,8 +664,8 @@ int ap_show_help(ap *par) {
                        (err = ap_out(par, "positional arguments:")) ||
                        (err = ap_feed(par))))
         return err;
-      if ((err = ap_out(par, "  ")) || (err = ap_out(par, arg->metavar)) ||
-          (err = ap_feed(par)))
+      if ((err = ap_out(par, "  ")) ||
+          (err = ap_show_argspec(par, arg, ap_out, 1)) || (err = ap_feed(par)))
         return err;
       if (arg->help && ((err = ap_out(par, "    ")) ||
                         (err = ap_out(par, arg->help)) || (err = ap_feed(par))))
@@ -617,23 +681,8 @@ int ap_show_help(ap *par) {
           ((err = ap_feed(par)) || (err = ap_out(par, "optional arguments:")) ||
            (err = ap_feed(par))))
         return err;
-      if ((err = ap_out(par, "  ")))
-        return err;
-      if (arg->opt_short &&
-          ((err = ap_out(par, "-")) || (err = ap_outc(par, arg->opt_short))))
-        return err;
-      if (arg->metavar &&
-          ((err = ap_out(par, " ")) || (err = ap_out(par, arg->metavar))))
-        return err;
-      if (arg->opt_long && arg->opt_short && (err = ap_out(par, ", ")))
-        return err;
-      if (arg->opt_long &&
-          ((err = ap_out(par, "--")) || (err = ap_out(par, arg->opt_long))))
-        return err;
-      if (arg->metavar &&
-          ((err = ap_out(par, " ")) || (err = ap_out(par, arg->metavar))))
-        return err;
-      if ((err = ap_feed(par)))
+      if ((err = ap_out(par, "  ")) ||
+          (err = ap_show_argspec(par, arg, ap_out, 1)) || (err = ap_feed(par)))
         return err;
       if (arg->help && ((err = ap_out(par, "    ")) ||
                         (err = ap_out(par, arg->help)) || (err = ap_feed(par))))
@@ -644,4 +693,36 @@ int ap_show_help(ap *par) {
                       (err = ap_out(par, par->epilog)) || (err = ap_feed(par))))
     return err;
   return err;
+}
+
+int ap_error_prefix(ap *par) {
+  int err;
+  if ((err = ap_usage(par, ap_err)))
+    return err;
+  if ((err = ap_err(par, "\n")) || (err = ap_err(par, par->progname)) ||
+      (err = ap_err(par, ": ")) || (err = ap_err(par, "error: ")))
+    return err;
+  return err;
+}
+
+int ap_error(ap *par, const char *error_string) {
+  int err;
+  if ((err = ap_error_prefix(par)) || (err = ap_err(par, error_string)) ||
+      (err = ap_err(par, "\n")))
+    return err;
+  return AP_ERR_NONE;
+}
+
+int ap_arg_error(ap_cb_data *cbd, const char *error_string) {
+  int err;
+  ap *par = cbd->parser;
+  ap_arg *arg = cbd->reserved;
+  /* if this fails, you tried to call ap_arg_error from a destructor callback */
+  assert(!arg || cbd->destroy);
+  if ((err = ap_error_prefix(par)) || (err = ap_err(par, "argument ")) ||
+      (err = ap_show_argspec(par, arg, ap_err, 0)) ||
+      (err = ap_err(par, ": ")) || (err = ap_err(par, error_string)) ||
+      (err = ap_err(par, "\n")))
+    return err;
+  return AP_ERR_PARSE;
 }

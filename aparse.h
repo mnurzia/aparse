@@ -7,6 +7,7 @@
 #define AP_ERR_NOMEM -1
 #define AP_ERR_PARSE -2
 #define AP_ERR_IO -3
+#define AP_ERR_EXIT -4
 
 typedef struct ap ap;
 
@@ -26,6 +27,7 @@ typedef struct ap_cb_data {
   int more;
   int destroy;
   ap *parser;
+  void *reserved;
 } ap_cb_data;
 
 typedef int (*ap_cb)(void *uptr, ap_cb_data *pdata);
@@ -42,8 +44,9 @@ int ap_opt(ap *par, char short_opt, const char *long_opt);
 void ap_type_flag(ap *par, int *out);
 void ap_type_int(ap *par, int *out);
 void ap_type_str(ap *par, const char **out);
-
 int ap_type_enum(ap *par, int *out, const char **choices);
+void ap_type_help(ap *par);
+void ap_type_version(ap *par, const char *version);
 
 void ap_help(ap *par, const char *help);
 void ap_metavar(ap *par, const char *metavar);
@@ -58,5 +61,8 @@ int ap_parse(ap *par, int argc, const char *const *argv);
 
 int ap_show_help(ap *par);
 int ap_show_usage(ap *par);
+
+int ap_error(ap *par, const char *error_string);
+int ap_arg_error(ap_cb_data *cbd, const char *error_string);
 
 #endif
