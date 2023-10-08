@@ -211,7 +211,7 @@ int ap_error(ap *parser, const char *error_string);
  * - parser: the parser to show the help text of
  * - error_string: the error message
  * return:
- * - AP_ERR_NONE: no error
+ * - AP_ERR_PARSE: no error (intended to be used as a direct return value)
  * - AP_ERR_IO: I/O error when writing output */
 int ap_arg_error(ap_cb_data *cbd, const char *error_string);
 
