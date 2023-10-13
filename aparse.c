@@ -496,7 +496,10 @@ int ap_help_cb(void *uptr, ap_cb_data *pdata) {
   return AP_ERR_EXIT;
 }
 
-void ap_type_help(ap *par) { ap_type_custom(par, ap_help_cb, NULL); }
+void ap_type_help(ap *par) {
+  ap_type_custom(par, ap_help_cb, NULL);
+  ap_help(par, "show this help text and exit");
+}
 
 int ap_version_cb(void *uptr, ap_cb_data *pdata) {
   int err;
@@ -507,6 +510,7 @@ int ap_version_cb(void *uptr, ap_cb_data *pdata) {
 
 void ap_type_version(ap *par, const char *version) {
   ap_type_custom(par, ap_version_cb, (void *)version);
+  ap_help(par, "show version text and exit");
 }
 
 typedef struct ap_parser {
