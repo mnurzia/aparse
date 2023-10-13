@@ -209,7 +209,7 @@ int ap_show_usage(ap *parser);
  * - parser: the parser to display the error for
  * - error_string: the error message
  * return:
- * - AP_ERR_NONE: no error
+ * - 1: no [internal] error -- so you can call exit(ap_error(...))
  * - AP_ERR_IO: I/O error when writing output */
 int ap_error(ap *parser, const char *error_string);
 

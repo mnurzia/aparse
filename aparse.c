@@ -740,7 +740,7 @@ int ap_error(ap *par, const char *error_string) {
   if ((err = ap_error_prefix(par)) ||
       (err = ap_pstrs(par, ap_cb_err, "%s\n", error_string)))
     return err;
-  return AP_ERR_NONE;
+  return 1;
 }
 
 int ap_arg_error(ap_cb_data *cbd, const char *error_string) {
