@@ -17,9 +17,17 @@ typedef struct ap ap;
 
 /* customizable callbacks for ap instances */
 typedef struct ap_ctxcb {
-  void *uptr;                                      /* user pointer */
-  void *(*alloc)(void *, void *, size_t, size_t);  /* allocate */
-  int (*print)(void *, int, const char *, size_t); /* print to stdout/err */
+  /* user pointer */
+  void *uptr;
+  /* general-purpose allocator callback
+   *   ptr == NULL, new_size != 0 ->  malloc(new_size)
+   *   ptr != NULL, new_size != 0 -> realloc(ptr, new_size)
+   *   ptr != NULL, new_size == 0 ->    free(ptr) [return NULL] */
+  void *(*alloc)(void *uptr, void *ptr, size_t old_size, size_t new_size);
+  /* print to stdout/stderr
+   *   fd == 0 -> fwrite(text, 1, size, stdout)
+   *   fd == 1 -> fwrite(text, 1, size, stderr) */
+  int (*print)(void *uptr, int fd, const char *text, size_t size);
 } ap_ctxcb;
 
 /* callback data passed to argument callbacks */
