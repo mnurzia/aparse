@@ -11,14 +11,15 @@
 
 typedef struct ap ap;
 
+/* "file descriptors" passed to ap_ctxcb->print */
+#define AP_FD_OUT 0 /* stdout */
+#define AP_FD_ERR 1 /* stderr */
+
 /* customizable callbacks for ap instances */
 typedef struct ap_ctxcb {
-  void *uptr;                               /* user pointer */
-  void *(*malloc)(void *, size_t);          /* get memory */
-  void *(*realloc)(void *, void *, size_t); /* reallocate memory */
-  void (*free)(void *, void *);             /* free memory */
-  int (*out)(void *, const char *, size_t); /* print to stdout */
-  int (*err)(void *, const char *, size_t); /* print to stderr */
+  void *uptr;                                      /* user pointer */
+  void *(*alloc)(void *, void *, size_t, size_t);  /* allocate */
+  int (*print)(void *, int, const char *, size_t); /* print to stdout/err */
 } ap_ctxcb;
 
 /* callback data passed to argument callbacks */

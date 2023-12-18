@@ -178,15 +178,13 @@ struct bufs {
   char err[2048];
 };
 
-int dummy_out_cb(void *uptr, const char *text, size_t n) {
-  if (uptr)
-    strncat(((struct bufs *)uptr)->out, text, n);
-  return AP_ERR_NONE;
-}
-
-int dummy_err_cb(void *uptr, const char *text, size_t n) {
-  if (uptr)
-    strncat(((struct bufs *)uptr)->err, text, n);
+int dummy_print_cb(void *uptr, int fd, const char *text, size_t n) {
+  if (uptr) {
+    if (fd == AP_FD_OUT)
+      strncat(((struct bufs *)uptr)->out, text, n);
+    else
+      strncat(((struct bufs *)uptr)->err, text, n);
+  }
   return AP_ERR_NONE;
 }
 
@@ -194,8 +192,7 @@ ap *make_out_hooks(ap_ctxcb *cb, struct bufs *bufs) {
   ap *parser;
   int err = AP_ERR_NONE;
   cb->uptr = bufs;
-  cb->out = dummy_out_cb;
-  cb->err = dummy_err_cb;
+  cb->print = dummy_print_cb;
   if ((err = ap_init_full(&parser, "abc", cb)))
     return NULL;
   return parser;

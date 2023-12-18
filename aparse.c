@@ -50,30 +50,33 @@ struct ap {
 
 /* callback wrappers */
 void *ap_cb_malloc(ap *parser, size_t n) {
-  return parser->ctxcb->malloc ? parser->ctxcb->malloc(parser->ctxcb->uptr, n)
-                               : malloc(n);
+  return parser->ctxcb->alloc
+             ? parser->ctxcb->alloc(parser->ctxcb->uptr, NULL, 0, n)
+             : malloc(n);
 }
 
-void ap_cb_free(ap *parser, void *ptr) {
-  parser->ctxcb->free ? parser->ctxcb->free(parser->ctxcb->uptr, ptr)
-                      : free(ptr);
+void ap_cb_free(ap *parser, void *ptr, size_t n) {
+  if (parser->ctxcb->alloc)
+    parser->ctxcb->alloc(parser->ctxcb->uptr, ptr, n, 0);
+  else
+    free(ptr);
 }
 
-void *ap_cb_realloc(ap *parser, void *ptr, size_t n) {
-  return parser->ctxcb->realloc
-             ? parser->ctxcb->realloc(parser->ctxcb->uptr, ptr, n)
+void *ap_cb_realloc(ap *parser, void *ptr, size_t o, size_t n) {
+  return parser->ctxcb->alloc
+             ? parser->ctxcb->alloc(parser->ctxcb->uptr, ptr, o, n)
              : realloc(ptr, n);
 }
 
 int ap_cb_out(ap *parser, const char *text, size_t n) {
-  return parser->ctxcb->out
-             ? parser->ctxcb->out(parser->ctxcb->uptr, text, n)
+  return parser->ctxcb->print
+             ? parser->ctxcb->print(parser->ctxcb->uptr, AP_FD_OUT, text, n)
              : (fwrite(text, 1, n, stdout) < n ? AP_ERR_IO : AP_ERR_NONE);
 }
 
 int ap_cb_err(ap *parser, const char *text, size_t n) {
-  return parser->ctxcb->err
-             ? parser->ctxcb->err(parser->ctxcb->uptr, text, n)
+  return parser->ctxcb->print
+             ? parser->ctxcb->print(parser->ctxcb->uptr, AP_FD_ERR, text, n)
              : (fwrite(text, 1, n, stderr) < n ? AP_ERR_IO : AP_ERR_NONE);
 }
 
@@ -226,7 +229,7 @@ int ap_arg_error(ap_cb_data *cbd, const char *error_string) {
 }
 
 /* default callbacks (stubbed to NULL so that we know to use default funcs) */
-static const ap_ctxcb ap_default_ctxcb = {NULL, NULL, NULL, NULL, NULL, NULL};
+static const ap_ctxcb ap_default_ctxcb = {NULL, NULL, NULL};
 
 ap *ap_init(const char *progname) {
   ap *out;
@@ -239,8 +242,8 @@ int ap_init_full(ap **out, const char *progname, const ap_ctxcb *pctxcb) {
   /* do a little dance to use the correct malloc callback before we've actually
    * allocated memory for the parser */
   pctxcb = pctxcb ? pctxcb : &ap_default_ctxcb;
-  par = pctxcb->malloc ? pctxcb->malloc(pctxcb->uptr, sizeof(ap))
-                       : malloc(sizeof(ap));
+  par = pctxcb->alloc ? pctxcb->alloc(pctxcb->uptr, NULL, 0, sizeof(ap))
+                      : malloc(sizeof(ap));
   memset(par, 0, sizeof(*par));
   if (!par)
     return AP_ERR_NOMEM;
@@ -264,7 +267,7 @@ void ap_destroy(ap *par) {
         ap_sub *prev_sub = sub;
         ap_destroy(prev_sub->par);
         sub = sub->next;
-        ap_cb_free(par, prev_sub);
+        ap_cb_free(par, prev_sub, sizeof(*prev_sub));
       }
     } else if (prev->flags & AP_ARG_FLAG_DESTRUCTOR) {
       /* destroy arguments that requested it */
@@ -274,9 +277,9 @@ void ap_destroy(ap *par) {
       prev->cb(prev->user, &data);
     }
     par->args = par->args->next;
-    ap_cb_free(par, prev);
+    ap_cb_free(par, prev, sizeof(*prev));
   }
-  ap_cb_free(par, par);
+  ap_cb_free(par, par, sizeof(*par));
 }
 
 void ap_description(ap *par, const char *description) {
@@ -350,7 +353,7 @@ int ap_sub_add(ap *par, const char *name, ap **subpar) {
   if (!sub)
     return AP_ERR_NOMEM;
   if ((err = ap_init_full(subpar, NULL, par->ctxcb))) {
-    ap_cb_free(par, sub);
+    ap_cb_free(par, sub, sizeof(*sub));
     return err;
   }
   sub->identifier = name;
@@ -430,8 +433,8 @@ int ap_enum_cb(void *uptr, ap_cb_data *pdata) {
   const char **cur;
   int i;
   if (pdata->destroy) {
-    ap_cb_free(pdata->parser, e->metavar);
-    ap_cb_free(pdata->parser, e);
+    ap_cb_free(pdata->parser, e->metavar, strlen(e->metavar));
+    ap_cb_free(pdata->parser, e, sizeof(*e));
     return AP_ERR_NONE;
   }
   for (cur = e->choices, i = 0; *cur; cur++, i++) {
@@ -466,7 +469,7 @@ int ap_type_enum(ap *par, int *out, const char **choices) {
     }
     e->metavar = malloc(sizeof(char) * mvs + 1);
     if (!e->metavar) {
-      ap_cb_free(par, e);
+      ap_cb_free(par, e, sizeof(*e));
       return AP_ERR_NOMEM;
     }
     metavar_ptr = e->metavar;
